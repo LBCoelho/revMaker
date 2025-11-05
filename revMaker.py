@@ -11,7 +11,7 @@ required_packages = {
     'FreeSimpleGUI': 'FreeSimpleGUI'
 }
 
-def check_and_install():
+def check_and_install(): #Instalação de dependencias // Deixar ativo somente se for executar o programa via .bat ou pelo CMD. Caso for compilar o .exe, comentar a função de iniciação
     """
     Verifica se os pacotes estão instalados. Se não, tenta instalar via pip.
     """
@@ -48,7 +48,6 @@ check_and_install()
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
 
-# --- PARTE 0: IMPORTS COMBINADOS ---
 import threading
 import re
 import shutil
@@ -57,14 +56,14 @@ import FreeSimpleGUI as sg
 import win32com.client
 from PyPDF2 import PdfReader, PdfWriter
 
-# --- PARTE 1: LÓGICA DO APP "CRIAR NOVA PASTA DE REVISÃO" ---
+# CRIAR NOVA PASTA DE REVISÃO
 
 def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
 
     diretorio_base = Path(diretorio_base_str)
     status_callback(f"Analisando diretório: {diretorio_base}", 10) 
     
-    padrao_rev = re.compile(r'^Rev\.\s(\d{1,2})$')
+    padrao_rev = re.compile(r'^Rev\.(\d{1,2})$')
     pastas_rev_encontradas = []
     
     for item in diretorio_base.iterdir():
@@ -75,23 +74,22 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
                 pastas_rev_encontradas.append((numero_rev, item))
 
     if not pastas_rev_encontradas:
-        raise Exception("Erro: Nenhuma pasta no formato 'Rev. X' (com espaço) foi encontrada.")
+        raise Exception("Erro: Nenhuma pasta no formato 'Rev.X' foi encontrada. Verifique a formatação das pastas ou o diretorio")
 
     rev_atual_num, pasta_rev_atual_CAMINHO_ANTIGO = max(pastas_rev_encontradas, key=lambda item: item[0])
     status_callback(f"Revisão mais alta encontrada: {pasta_rev_atual_CAMINHO_ANTIGO.name}", 20)
+    #
+    #pdfs_na_pasta_atual = list(pasta_rev_atual_CAMINHO_ANTIGO.glob('*.pdf'))
 
-    pdfs_na_pasta_atual = list(pasta_rev_atual_CAMINHO_ANTIGO.glob('*.pdf'))
+    #if not pdfs_na_pasta_atual:
+    #    raise Exception(f"Erro: Sem PDF da revisão na pasta {pasta_rev_atual_CAMINHO_ANTIGO.name}. Verifique se essa pasta já não é a revisão em andamento.")
 
-    if not pdfs_na_pasta_atual:
-        raise Exception(f"Erro: Sem PDF da revisão na pasta {pasta_rev_atual_CAMINHO_ANTIGO.name}. Verifique se essa pasta já não é a revisão em andamento.")
+    #status_callback(f"PDF encontrado: {pdfs_na_pasta_atual[0].name}", 30)
 
-    status_callback(f"PDF encontrado: {pdfs_na_pasta_atual[0].name}", 30)
-
-    pdf_origem_nome = pdfs_na_pasta_atual[0].name
+    #pdf_origem_nome = pdfs_na_pasta_atual[0].name
     docx_origem_nomes = [p.name for p in pasta_rev_atual_CAMINHO_ANTIGO.glob('*.docx')]
     pasta_rev_atual_nome = pasta_rev_atual_CAMINHO_ANTIGO.name
 
-    # --- ETAPA 2: Renomeação da Pasta Raiz ---
     tag = "[Em revisão] "
     if not diretorio_base.name.startswith(tag):
         status_callback(f"Adicionando tag ao diretório: {diretorio_base.name}...")
@@ -106,15 +104,14 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     else:
         status_callback("Tag [Em revisão] já existe. Prosseguindo...", 35)
 
-    # --- ETAPA 3: Definição dos NOVOS caminhos ---
     pasta_rev_atual = diretorio_base / pasta_rev_atual_nome 
-    pdf_origem = pasta_rev_atual / pdf_origem_nome
+    #pdf_origem = pasta_rev_atual / pdf_origem_nome
     docx_origem_list = [pasta_rev_atual / nome for nome in docx_origem_nomes]
 
     status_callback("\nIniciando modificações: Criando nova revisão...")
     
     rev_proxima_num = rev_atual_num + 1
-    pasta_rev_proxima = diretorio_base / f"Rev. {rev_proxima_num}"
+    pasta_rev_proxima = diretorio_base / f"Rev.{rev_proxima_num}"
 
     if pasta_rev_proxima.exists():
         raise Exception(f"Erro: A pasta {pasta_rev_proxima.name} já existe! Nenhuma modificação foi feita.")
@@ -159,8 +156,8 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     pasta_old.mkdir()
     status_callback(f"Pasta criada: 06-OLD")
     
-    shutil.copy2(pdf_origem, pasta_old)
-    status_callback(f"PDF copiado para 06-OLD: {pdf_origem.name}")
+    #shutil.copy2(pdf_origem, pasta_old)
+    #status_callback(f"PDF copiado para 06-OLD: {pdf_origem.name}")
 
     docx_origem_para_renomear = None
     if docx_origem_list:
@@ -287,7 +284,7 @@ def create_gui_revisao():
     window.close()
 
 
-# --- PARTE 2: LÓGICA DO APP "CRIAÇÃO DE PDF FINAL" ---
+# --- CRIAÇÃO DE PDF FINAL ---
 
 def convert_word_to_pdf(input_word_path, status_callback):
     """Converte um arquivo Word para PDF e retorna o caminho do novo PDF."""
@@ -433,19 +430,19 @@ def create_gui_pdf():
     window.close()
 
 
-# --- PARTE 3: LÓGICA DO MENU PRINCIPAL ---
+# ---MENU PRINCIPAL---
 
 def create_main_menu():
     """Cria e executa a janela do Menu Principal."""
     sg.theme('GrayGrayGray')
     
     layout = [
-        [sg.Text("RevMaker v1.0", font=("Helvetica", 16))],
+        [sg.Text("RevMaker v1.1", font=("Helvetica", 16))],
         [sg.Text("Selecione a ferramenta desejada:")],
         [sg.Button("Criar nova pasta de revisão", key="-REVISAO-", size=(40, 2))],
         [sg.Button("Criação de PDF final (PP + Desenho)", key="-PDF-", size=(40, 2))],
         [sg.Button("Sair", size=(10, 1), button_color=('white', 'firebrick'))],
-        [sg.Text("Fernando Carmo e Lucas Coelho. TechnipFMC @2025",font=("Helvetica", 6))]
+        [sg.Text("Fernando Carmo & Lucas Coelho. OperationsLTC@2025",font=("Helvetica", 7))]
     ]
     
     window = sg.Window("Menu Principal", layout, element_justification='c')
@@ -469,7 +466,7 @@ def create_main_menu():
     window.close()
 
 
-# --- PARTE 4: PONTO DE ENTRADA ---
+# ---ENTRADA---
 
 if __name__ == "__main__":
     create_main_menu()
