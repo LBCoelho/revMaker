@@ -5,6 +5,8 @@ import os # Usado para DEVNULL
 
 print("Iniciando... Verificando dependências necessárias.")
 
+version = "v1.1"
+
 required_packages = {
     'pywin32': 'win32com',
     'PyPDF2': 'PyPDF2',
@@ -43,7 +45,7 @@ def check_and_install(): #Instalação de dependencias // Deixar ativo somente s
     else:
         print("Dependências já estão em dia.")
 
-check_and_install()
+#check_and_install()
 
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
@@ -203,9 +205,9 @@ def create_gui_revisao():
     input_column = [
         [sg.Text("1. Selecione o Diretório Raiz do Projeto")],
         [sg.Input(key="-DIR-", enable_events=True), sg.FolderBrowse("Procurar", target="-DIR-")],
-        [sg.Text(" (A pasta que contém as 'Rev. 1', 'Rev. 2', etc.)", font=("Helvetica", 9))],
+        [sg.Text(" (A pasta que contém as 'Rev.1', 'Rev.2', etc.)", font=("Helvetica", 9))],
         [sg.HSeparator()],
-        [sg.Checkbox("Anexar documentos auxiliares?", key="-AUX_CHECK-", enable_events=True)],
+        [sg.Checkbox("Anexar documentos auxiliares? (VCPs, Referencias etc.)", key="-AUX_CHECK-", enable_events=True)],
         [
             sg.Text("Arquivos Auxiliares:", key="-AUX_TEXT-"), 
             sg.Input(key="-AUX_FILES-", readonly=True, disabled=True, enable_events=True), 
@@ -214,7 +216,8 @@ def create_gui_revisao():
                           target="-AUX_FILES-", 
                           key="-AUX_BROWSE-", 
                           disabled=True)
-        ]
+        ],
+        [sg.Text("Arquivos com nomes extensos não serão importados. Reduza o nome caso necessario.", font=("Helvetica", 9),text_color=("red"),)]
     ]
     status_column = [
         [sg.Text("Status do Processo")],
@@ -412,7 +415,7 @@ def create_gui_pdf():
             window["-STATUS-"].update("")
             window["-PROGRESS-"].update(0)
             threading.Thread(
-                target=pdf_worker_thread, # CHAMA A FUNÇÃO RENOMEADA
+                target=pdf_worker_thread,
                 args=(window, values["-DOCX-"], values["-PDF-"], int(values["-START_PAGE-"]), values["-OUTPUT-"]),
                 daemon=True
             ).start()
@@ -437,15 +440,15 @@ def create_main_menu():
     sg.theme('GrayGrayGray')
     
     layout = [
-        [sg.Text("RevMaker v1.1", font=("Helvetica", 16))],
+        [sg.Text("RevMaker", font=("Helvetica", 16)),sg.Text(version, font=("Helvetica", 10),text_color=("grey"))],
         [sg.Text("Selecione a ferramenta desejada:")],
         [sg.Button("Criar nova pasta de revisão", key="-REVISAO-", size=(40, 2))],
         [sg.Button("Criação de PDF final (PP + Desenho)", key="-PDF-", size=(40, 2))],
         [sg.Button("Sair", size=(10, 1), button_color=('white', 'firebrick'))],
-        [sg.Text("Fernando Carmo & Lucas Coelho. OperationsLTC@2025",font=("Helvetica", 7))]
-    ]
+        [sg.Text("Fernando Carmo & Lucas Coelho\n       OperationsLTC@2025",font=("Helvetica", 7))]
+        ]
     
-    window = sg.Window("Menu Principal", layout, element_justification='c')
+    window = sg.Window("RevMaker Version 1.1. ", layout, element_justification='c')
     
     while True:
         event, values = window.read()

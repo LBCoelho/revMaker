@@ -1,4 +1,6 @@
 /old
 /build
+/dist
 *.spec
 *.exe
+melhorias.txt
