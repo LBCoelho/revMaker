@@ -45,7 +45,7 @@ def check_and_install(): #Instalação de dependencias // Deixar ativo somente s
     else:
         print("Dependências já estão em dia.")
 
-#check_and_install()
+check_and_install()
 
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
