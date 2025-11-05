@@ -1,2 +1,4 @@
-dist/
-old/
+/old
+/build
+*.spec
+*.exe
