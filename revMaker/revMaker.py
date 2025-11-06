@@ -55,7 +55,7 @@ def normalizar_caminho(caminho):
     else:
         print("Dependências já estão em dia.")
 
-check_and_install()
+#check_and_install()
 
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
@@ -91,12 +91,12 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     rev_atual_num, pasta_rev_atual_CAMINHO_ANTIGO = max(pastas_rev_encontradas, key=lambda item: item[0])
     status_callback(f"Revisão mais alta encontrada: {pasta_rev_atual_CAMINHO_ANTIGO.name}", 20)
     #
-    #pdfs_na_pasta_atual = list(pasta_rev_atual_CAMINHO_ANTIGO.glob('*.pdf'))
+    pdfs_na_pasta_atual = list(pasta_rev_atual_CAMINHO_ANTIGO.glob('*.pdf'))
 
-    #if not pdfs_na_pasta_atual:
-    #    raise Exception(f"Erro: Sem PDF da revisão na pasta {pasta_rev_atual_CAMINHO_ANTIGO.name}. Verifique se essa pasta já não é a revisão em andamento.")
+    if not pdfs_na_pasta_atual:
+        raise Exception(f"Erro: Sem PDF da revisão na pasta {pasta_rev_atual_CAMINHO_ANTIGO.name}. Verifique se essa pasta já não é a revisão em andamento.")
 
-    #status_callback(f"PDF encontrado: {pdfs_na_pasta_atual[0].name}", 30)
+    status_callback(f"PDF encontrado: {pdfs_na_pasta_atual[0].name}", 30)
 
     #pdf_origem_nome = pdfs_na_pasta_atual[0].name
     docx_origem_nomes = [p.name for p in pasta_rev_atual_CAMINHO_ANTIGO.glob('*.docx')]
