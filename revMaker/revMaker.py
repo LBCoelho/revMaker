@@ -337,7 +337,7 @@ def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_pat
                 f"Erro de lógica: A substituição de {num_pages_to_insert} páginas a partir da página {start_page_replace} "
                 f"excede o total de {num_pages_total_modify} páginas do documento."
             )
-        start_index = start_page_replace - 1
+        start_index = start_page_replace
         end_index = start_index + num_pages_to_insert
         status_callback(f"OK. Substituindo {num_pages_to_insert} páginas, começando na página {start_page_replace}.")
         writer = PdfWriter()
