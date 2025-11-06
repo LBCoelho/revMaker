@@ -1,11 +1,15 @@
 import sys
 import subprocess
 import importlib.util
-import os # Usado para DEVNULL
+import os
+import unicodedata
+import webbrowser
+
+
 
 print("Iniciando... Verificando dependências necessárias.")
 
-version = "v1.1"
+version = "v1.2"
 
 required_packages = {
     'pywin32': 'win32com',
@@ -14,9 +18,6 @@ required_packages = {
 }
 
 def check_and_install(): #Instalação de dependencias // Deixar ativo somente se for executar o programa via .bat ou pelo CMD. Caso for compilar o .exe, comentar a função de iniciação
-    """
-    Verifica se os pacotes estão instalados. Se não, tenta instalar via pip.
-    """
     pacotes_instalados = 0
     for package_name, import_name in required_packages.items():
         spec = importlib.util.find_spec(import_name)
@@ -36,6 +37,15 @@ def check_and_install(): #Instalação de dependencias // Deixar ativo somente s
                 print("Por favor, execute o comando manualmente:", file=sys.stderr)
                 print(f"pip install {package_name}", file=sys.stderr)
                 sys.exit(1)
+
+
+def normalizar_caminho(caminho):
+    # Normaliza acentuação e converte para formato longo do Windows
+    caminho_normalizado = unicodedata.normalize('NFC', caminho)
+    if not caminho_normalizado.startswith('\\\\?\\'):
+        caminho_normalizado = r'\\?\\' + caminho_normalizado.replace('/', '\\')
+    return caminho_normalizado
+
     
     if pacotes_instalados > 0:
         print("-" * 50)
@@ -132,16 +142,20 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     if aux_files_list:
         status_callback(f"Anexando {len(aux_files_list)} arquivos auxiliares...")
         aux_path = pasta_rev_proxima / "01-Auxiliares"
-        for file_path_str in aux_files_list:
-            if file_path_str and os.path.exists(file_path_str):
+    for file_path_str in aux_files_list:
+        if file_path_str:
+            long_path_str = normalizar_caminho(file_path_str)
+
+            if os.path.exists(long_path_str):
                 try:
-                    file_path = Path(file_path_str)
+                    file_path = Path(long_path_str)
                     shutil.copy2(file_path, aux_path)
                     status_callback(f"Copiado: {file_path.name}")
                 except Exception as e:
                     status_callback(f"Aviso: Falha ao copiar {os.path.basename(file_path_str)}. Erro: {e}")
-            elif file_path_str:
+            else:
                 status_callback(f"Aviso: Caminho do arquivo auxiliar '{file_path_str}' não encontrado. Pulando.")
+
 
     pastas_para_copiar = ["04-JRA", "05-Desenhos"]
     for pasta_nome in pastas_para_copiar:
@@ -187,7 +201,6 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     status_callback("\nProcesso de Criação da Nova Revisão CONCLUÍDO!", 100)
 
 def revisao_worker_thread(window, diretorio_base_str, aux_files_str):
-    """Roda a função 'processar_revisao' em uma thread separada para não travar a GUI."""
     try:
         def update_gui(message, progress=None):
             window.write_event_value('-THREAD_UPDATE-', {'message': message, 'progress': progress})
@@ -200,14 +213,15 @@ def revisao_worker_thread(window, diretorio_base_str, aux_files_str):
         window.write_event_value('-THREAD_ERROR-', str(e))
 
 def create_gui_revisao():
-    """Cria e executa a GUI do app 'Criador de Novas Revisões'."""
     sg.theme('GrayGrayGray')
     input_column = [
-        [sg.Text("1. Selecione o Diretório Raiz do Projeto")],
+        [sg.Text("1. Selecione o Diretório Raiz do documento:\nEx: C:\\Users\\User\\Digicorner\\08-OPR\\07-PP\CDA\\01-Emissão\\001-001 - Passagem cabo W1")],
         [sg.Input(key="-DIR-", enable_events=True), sg.FolderBrowse("Procurar", target="-DIR-")],
         [sg.Text(" (A pasta que contém as 'Rev.1', 'Rev.2', etc.)", font=("Helvetica", 9))],
+        [sg.Text("")],
         [sg.HSeparator()],
-        [sg.Checkbox("Anexar documentos auxiliares? (VCPs, Referencias etc.)", key="-AUX_CHECK-", enable_events=True)],
+        [sg.Text("")],
+        [sg.Checkbox("Anexar documentos auxiliares na pasta 01-Auxiliares? (VCPs, Referencias etc.)", key="-AUX_CHECK-", enable_events=True)],
         [
             sg.Text("Arquivos Auxiliares:", key="-AUX_TEXT-"), 
             sg.Input(key="-AUX_FILES-", readonly=True, disabled=True, enable_events=True), 
@@ -217,7 +231,7 @@ def create_gui_revisao():
                           key="-AUX_BROWSE-", 
                           disabled=True)
         ],
-        [sg.Text("Arquivos com nomes extensos não serão importados. Reduza o nome caso necessario.", font=("Helvetica", 9),text_color=("red"),)]
+        #[sg.Text("Arquivos com nomes extensos não serão importados. Reduza o nome caso necessario.", font=("Helvetica", 9),text_color=("red"),)]
     ]
     status_column = [
         [sg.Text("Status do Processo")],
@@ -229,7 +243,7 @@ def create_gui_revisao():
     ]
     layout = [[sg.Column(input_column), sg.VSeperator(), sg.Column(status_column, element_justification='center')]]
 
-    window = sg.Window("Criador de Novas Revisões", layout)
+    window = sg.Window("Criador de Novas Revisões v1.2", layout)
 
     while True:
         event, values = window.read()
@@ -290,7 +304,6 @@ def create_gui_revisao():
 # --- CRIAÇÃO DE PDF FINAL ---
 
 def convert_word_to_pdf(input_word_path, status_callback):
-    """Converte um arquivo Word para PDF e retorna o caminho do novo PDF."""
     word_app = None
     output_pdf_path = os.path.splitext(input_word_path)[0] + "_convertido.pdf"
     try:
@@ -310,7 +323,6 @@ def convert_word_to_pdf(input_word_path, status_callback):
             word_app.Quit()
 
 def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_path, status_callback):
-    """Substitui um bloco de páginas em um PDF por páginas de outro PDF."""
     try:
         reader_modify = PdfReader(pdf_modify)
         reader_insert = PdfReader(pdf_insert)
@@ -351,7 +363,6 @@ def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_pat
             status_callback(f"Aviso: Não foi possível remover o arquivo intermediário: {e}")
 
 def pdf_worker_thread(window, docx_file, pdf_file, start_page, output_file):
-    """Roda o processo de conversão e junção de PDF em uma thread separada."""
     try:
         def update_gui(message, progress=None):
             window.write_event_value('-THREAD_UPDATE-', {'message': message, 'progress': progress})
@@ -365,7 +376,6 @@ def pdf_worker_thread(window, docx_file, pdf_file, start_page, output_file):
         window.write_event_value('-THREAD_ERROR-', str(e))
 
 def create_gui_pdf():
-    """Cria e executa a GUI do app 'Criação de PDF Final'."""
     sg.theme('GrayGrayGray')
     input_column = [
         [sg.Text("1. Arquivo Word Principal (.docx)")],
@@ -436,19 +446,18 @@ def create_gui_pdf():
 # ---MENU PRINCIPAL---
 
 def create_main_menu():
-    """Cria e executa a janela do Menu Principal."""
     sg.theme('GrayGrayGray')
     
     layout = [
         [sg.Text("RevMaker", font=("Helvetica", 16)),sg.Text(version, font=("Helvetica", 10),text_color=("grey"))],
         [sg.Text("Selecione a ferramenta desejada:")],
-        [sg.Button("Criar nova pasta de revisão", key="-REVISAO-", size=(40, 2))],
-        [sg.Button("Criação de PDF final (PP + Desenho)", key="-PDF-", size=(40, 2))],
-        [sg.Button("Sair", size=(10, 1), button_color=('white', 'firebrick'))],
+        [sg.Button("Criar nova pasta de revisão", key="-REVISAO-", mouseover_colors=("grey"),size=(40, 2),tooltip="Ferramenta para criar pastas de revisão.\nO que ela vai fazer:\n-Verificar se a pasta raiz (pasta do PP) está com a tag [Em revisão] e adicionar tag caso ausencia.\n-Criar pasta de revisão baseado na ultima pasta\n-Criar pastas internas\n-Salvar arquivos auxiliares na pasta 01-Auxiliares\n-Mover a pasta desenhos\n-Mover o arquivo .docx da rev antiga para a pasta 06-OLD\n-Criar novo .docx renomeado para a nova versão")],
+        [sg.Button("Criação de PDF final (PP + Desenho)", key="-PDF-", size=(40, 2),mouseover_colors=("grey"),tooltip="Ferramenta para unificar .docx com os desenhos, gerando o PDF final.")],
+        [sg.Button("GitHub", key = "-GIT-", size=(5, 1), button_color=('white', 'purple'))],
         [sg.Text("Fernando Carmo & Lucas Coelho\n       OperationsLTC@2025",font=("Helvetica", 7))]
         ]
     
-    window = sg.Window("RevMaker Version 1.1. ", layout, element_justification='c')
+    window = sg.Window("RevMaker Version 1.2 ", layout, element_justification='c')
     
     while True:
         event, values = window.read()
@@ -465,6 +474,9 @@ def create_main_menu():
             window.hide()
             create_gui_pdf()
             window.un_hide()
+        
+        if event == "-GIT-":
+            webbrowser.open("https://github.com/LBCoelho/revMaker")
             
     window.close()
 
