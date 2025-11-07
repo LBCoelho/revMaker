@@ -15,7 +15,7 @@ required_packages = {
     'FreeSimpleGUI': 'FreeSimpleGUI'
 }
 
-def check_and_install(): #Instalação de dependencias // Deixar ativo somente se for executar o programa via .bat ou pelo CMD. Caso for compilar o .exe, comentar a função de iniciação
+def check_and_install():
     pacotes_instalados = 0
     for package_name, import_name in required_packages.items():
         spec = importlib.util.find_spec(import_name)
@@ -354,7 +354,7 @@ def convert_word_to_pdf(input_word_path, status_callback):
     
     wdDoNotSaveChanges = 0
     
-    input_word_path_abs = normalizar_caminho(input_word_path)
+    input_word_path_abs = os.path.abspath(input_word_path)
     output_pdf_path = os.path.splitext(input_word_path_abs)[0] + "_convertido.pdf"
     
     try:
@@ -362,16 +362,18 @@ def convert_word_to_pdf(input_word_path, status_callback):
         
         word_app = win32com.client.Dispatch("Word.Application")
         
-        word_app.Visible = False
-        word_app.DisplayAlerts = False
+        word_app.Visible = True
+        word_app.DisplayAlerts = False 
         
-        status_callback("Abrindo documento (em segundo plano)...")
+        status_callback("Abrindo documento (em modo de bypass)...")
         
         doc = word_app.Documents.Open(
             input_word_path_abs, 
             ReadOnly=False,
             ConfirmConversions=False
         )
+        
+        word_app.Visible = False
         
         if doc is None:
             raise Exception("Falha ao abrir o documento. Verifique se o arquivo não está corrompido.")
