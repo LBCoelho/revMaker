@@ -5,11 +5,9 @@ import os
 import unicodedata
 import webbrowser
 
-
-
 print("Iniciando... Verificando dependências necessárias.")
 
-version = "v1.2"
+version = "v1.3"
 
 required_packages = {
     'pywin32': 'win32com',
@@ -38,15 +36,6 @@ def check_and_install(): #Instalação de dependencias // Deixar ativo somente s
                 print(f"pip install {package_name}", file=sys.stderr)
                 sys.exit(1)
 
-
-def normalizar_caminho(caminho):
-    # Normaliza acentuação e converte para formato longo do Windows
-    caminho_normalizado = unicodedata.normalize('NFC', caminho)
-    if not caminho_normalizado.startswith('\\\\?\\'):
-        caminho_normalizado = r'\\?\\' + caminho_normalizado.replace('/', '\\')
-    return caminho_normalizado
-
-    
     if pacotes_instalados > 0:
         print("-" * 50)
         print("Instalação de dependências concluída. Reinicie o script.")
@@ -55,7 +44,16 @@ def normalizar_caminho(caminho):
     else:
         print("Dependências já estão em dia.")
 
-#check_and_install()
+
+def normalizar_caminho(caminho):
+    caminho_abs = os.path.abspath(caminho.replace('/', '\\'))
+    caminho_normalizado = unicodedata.normalize('NFC', caminho_abs)
+    if not caminho_normalizado.startswith('\\\\?\\'):
+        caminho_normalizado = r'\\?\\' + caminho_normalizado
+    return caminho_normalizado
+
+    
+check_and_install()
 
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
@@ -68,11 +66,11 @@ import FreeSimpleGUI as sg
 import win32com.client
 from PyPDF2 import PdfReader, PdfWriter
 
-# CRIAR NOVA PASTA DE REVISÃO
+# --- PARTE 1: CRIAR NOVA PASTA DE REVISÃO ---
 
-def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
+def processar_revisao(diretorio_base_str, aux_files_list, copy_drawings_flag, status_callback):
 
-    diretorio_base = Path(diretorio_base_str)
+    diretorio_base = Path(normalizar_caminho(diretorio_base_str))
     status_callback(f"Analisando diretório: {diretorio_base}", 10) 
     
     padrao_rev = re.compile(r'^Rev\.(\d{1,2})$')
@@ -90,7 +88,7 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
 
     rev_atual_num, pasta_rev_atual_CAMINHO_ANTIGO = max(pastas_rev_encontradas, key=lambda item: item[0])
     status_callback(f"Revisão mais alta encontrada: {pasta_rev_atual_CAMINHO_ANTIGO.name}", 20)
-    #
+    
     pdfs_na_pasta_atual = list(pasta_rev_atual_CAMINHO_ANTIGO.glob('*.pdf'))
 
     if not pdfs_na_pasta_atual:
@@ -98,7 +96,6 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
 
     status_callback(f"PDF encontrado: {pdfs_na_pasta_atual[0].name}", 30)
 
-    #pdf_origem_nome = pdfs_na_pasta_atual[0].name
     docx_origem_nomes = [p.name for p in pasta_rev_atual_CAMINHO_ANTIGO.glob('*.docx')]
     pasta_rev_atual_nome = pasta_rev_atual_CAMINHO_ANTIGO.name
 
@@ -117,7 +114,6 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
         status_callback("Tag [Em revisão] já existe. Prosseguindo...", 35)
 
     pasta_rev_atual = diretorio_base / pasta_rev_atual_nome 
-    #pdf_origem = pasta_rev_atual / pdf_origem_nome
     docx_origem_list = [pasta_rev_atual / nome for nome in docx_origem_nomes]
 
     status_callback("\nIniciando modificações: Criando nova revisão...")
@@ -128,7 +124,6 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     if pasta_rev_proxima.exists():
         raise Exception(f"Erro: A pasta {pasta_rev_proxima.name} já existe! Nenhuma modificação foi feita.")
 
-    # --- INÍCIO DAS MODIFICAÇÕES ---
     
     pasta_rev_proxima.mkdir()
     status_callback(f"Pasta criada: {pasta_rev_proxima.name}", 40)
@@ -142,39 +137,68 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
     if aux_files_list:
         status_callback(f"Anexando {len(aux_files_list)} arquivos auxiliares...")
         aux_path = pasta_rev_proxima / "01-Auxiliares"
-    for file_path_str in aux_files_list:
-        if file_path_str:
-            long_path_str = normalizar_caminho(file_path_str)
+        for file_path_str in aux_files_list:
+            if file_path_str:
+                long_path_str = normalizar_caminho(file_path_str)
 
-            if os.path.exists(long_path_str):
-                try:
-                    file_path = Path(long_path_str)
-                    shutil.copy2(file_path, aux_path)
-                    status_callback(f"Copiado: {file_path.name}")
-                except Exception as e:
-                    status_callback(f"Aviso: Falha ao copiar {os.path.basename(file_path_str)}. Erro: {e}")
+                if os.path.exists(long_path_str):
+                    try:
+                        file_path = Path(long_path_str)
+                        shutil.copy2(file_path, aux_path)
+                        status_callback(f"Copiado: {file_path.name}")
+                    except Exception as e:
+                        status_callback(f"Aviso: Falha ao copiar {os.path.basename(file_path_str)}. Erro: {e}")
+                else:
+                    status_callback(f"Aviso: Caminho do arquivo auxiliar '{file_path_str}' não encontrado. Pulando.")
+
+
+    pasta_jra = "04-JRA"
+    src_jra = pasta_rev_atual / pasta_jra
+    dst_jra = pasta_rev_proxima / pasta_jra
+    if src_jra.is_dir():
+        shutil.copytree(src_jra, dst_jra)
+        status_callback(f"Pasta copiada (com conteúdo): {pasta_jra}")
+    else:
+        status_callback(f"Aviso: Pasta '{pasta_jra}' não encontrada em {pasta_rev_atual.name}, não foi copiada.")
+
+    pasta_desenhos = "05-Desenhos"
+    src_desenhos = pasta_rev_atual / pasta_desenhos
+    dst_desenhos = pasta_rev_proxima / pasta_desenhos
+    
+    dst_desenhos.mkdir()
+    status_callback(f"Pasta criada: {pasta_desenhos}")
+
+    if copy_drawings_flag: 
+        status_callback("Copiando desenhos da revisão anterior para a pasta OLD...")
+        
+        dst_desenhos_old = dst_desenhos / "OLD"
+        dst_desenhos_old.mkdir()
+        
+        if src_desenhos.is_dir():
+            files_copied_count = 0
+            for item in src_desenhos.iterdir():
+                if item.is_file(): 
+                    try:
+                        shutil.copy2(item, dst_desenhos_old)
+                        files_copied_count += 1
+                    except Exception as e:
+                        status_callback(f"Aviso: Falha ao copiar desenho '{item.name}'. Erro: {e}")
+            
+            if files_copied_count > 0:
+                status_callback(f"   -> {files_copied_count} arquivos de desenho copiados para {dst_desenhos_old.name}")
             else:
-                status_callback(f"Aviso: Caminho do arquivo auxiliar '{file_path_str}' não encontrado. Pulando.")
-
-
-    pastas_para_copiar = ["04-JRA", "05-Desenhos"]
-    for pasta_nome in pastas_para_copiar:
-        src = pasta_rev_atual / pasta_nome
-        dst = pasta_rev_proxima / pasta_nome
-        if src.is_dir():
-            shutil.copytree(src, dst)
-            status_callback(f"Pasta copiada (com conteúdo): {pasta_nome}")
+                 status_callback(f"   -> Nenhum arquivo encontrado em {src_desenhos.name} para copiar.")
         else:
-            status_callback(f"Aviso: Pasta '{pasta_nome}' não encontrada em {pasta_rev_atual.name}, não foi copiada.")
+            status_callback(f"Aviso: Pasta de origem '{src_desenhos.name}' não encontrada, nada foi copiado.")
+    else:
+        status_callback("Pasta '05-Desenhos' criada (vazia, conforme solicitado).")
+
     status_callback("Pastas de projeto copiadas.", 70)
 
     pasta_old = pasta_rev_proxima / "06-OLD"
     pasta_old.mkdir()
     status_callback(f"Pasta criada: 06-OLD")
     
-    #shutil.copy2(pdf_origem, pasta_old)
-    #status_callback(f"PDF copiado para 06-OLD: {pdf_origem.name}")
-
     docx_origem_para_renomear = None
     if docx_origem_list:
         docx_origem_para_renomear = docx_origem_list[0] 
@@ -199,16 +223,17 @@ def processar_revisao(diretorio_base_str, aux_files_list, status_callback):
         status_callback(f"Aviso: Nenhum arquivo .docx encontrado para copiar para a raiz da nova revisão.")
 
     status_callback("\nProcesso de Criação da Nova Revisão CONCLUÍDO!", 100)
+    return str(pasta_rev_proxima).replace(r'\\?\\', '')
 
-def revisao_worker_thread(window, diretorio_base_str, aux_files_str):
+def revisao_worker_thread(window, diretorio_base_str, aux_files_str, copy_drawings_flag):
     try:
         def update_gui(message, progress=None):
             window.write_event_value('-THREAD_UPDATE-', {'message': message, 'progress': progress})
         
         update_gui("Iniciando processo...", 0)
         aux_files_list = aux_files_str.split(';') if aux_files_str else []
-        processar_revisao(diretorio_base_str, aux_files_list, update_gui)
-        window.write_event_value('-THREAD_DONE-', None)
+        folder_path = processar_revisao(diretorio_base_str, aux_files_list, copy_drawings_flag, update_gui)
+        window.write_event_value('-THREAD_DONE-', folder_path)
     except Exception as e:
         window.write_event_value('-THREAD_ERROR-', str(e))
 
@@ -220,6 +245,7 @@ def create_gui_revisao():
         [sg.Text(" (A pasta que contém as 'Rev.1', 'Rev.2', etc.)", font=("Helvetica", 9))],
         [sg.Text("")],
         [sg.HSeparator()],
+        [sg.Checkbox("Copiar desenhos da revisão anterior? (Move para pasta OLD)", key="-COPY_DRAWINGS-", default=True, enable_events=True)],
         [sg.Text("")],
         [sg.Checkbox("Anexar documentos auxiliares na pasta 01-Auxiliares? (VCPs, Referencias etc.)", key="-AUX_CHECK-", enable_events=True)],
         [
@@ -231,24 +257,37 @@ def create_gui_revisao():
                           key="-AUX_BROWSE-", 
                           disabled=True)
         ],
-        #[sg.Text("Arquivos com nomes extensos não serão importados. Reduza o nome caso necessario.", font=("Helvetica", 9),text_color=("red"),)]
     ]
     status_column = [
         [sg.Text("Status do Processo")],
         [sg.Multiline(size=(50, 15), key="-STATUS-", autoscroll=True, disabled=True, reroute_cprint=True)],
         [sg.ProgressBar(100, orientation='h', size=(35, 20), key='-PROGRESS-')],
-        [sg.Button("Executar", key="-RUN-"),
+        [sg.Button("Executar", key="-RUN-", disabled=True),
          sg.Button("Limpar", key="-CLEAR-"),
+         sg.Button("Ajuda", key="-AJUDA_REVISAO-"),
          sg.Button("Sair", key="-SAIR_REVISAO-", button_color=('white', 'firebrick'))]
     ]
     layout = [[sg.Column(input_column), sg.VSeperator(), sg.Column(status_column, element_justification='center')]]
 
-    window = sg.Window("Criador de Novas Revisões v1.2", layout)
+    window = sg.Window("Criador de Novas Revisões v1.3", layout)
 
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == "-SAIR_REVISAO-":
             break
+        
+        if event == "-AJUDA_REVISAO-":
+            help_text = (
+                "Passo a passo para Criar Nova Revisão:\n\n"
+                "1. No campo '1. Selecione o Diretório Raiz...', clique em 'Procurar' e selecione a pasta principal do documento a ser revisado (a pasta que contém suas 'Rev.1', 'Rev.2', etc.).\n\n"
+                "2. (Opcional) Marque a caixa 'Copiar desenhos...' para copiar os arquivos da '05-Desenhos' anterior para uma pasta 'OLD' na nova revisão. Se desmarcado, a pasta '05-Desenhos' será criada vazia.\n\n"
+                "3. (Opcional) Marque a caixa 'Anexar documentos auxiliares...' para adicionar arquivos (VCPs, referências) à pasta '01-Auxiliares'.\n\n"
+                "4. Se a caixa de 'Anexar' for marcada, clique em 'Procurar' ao lado de 'Arquivos Auxiliares' e selecione um ou mais arquivos.\n\n"
+                "5. O botão 'Executar' será habilitado quando o diretório principal (Passo 1) for preenchido (e os arquivos auxiliares, se a caixa estiver marcada).\n\n"
+                "6. Clique em 'Executar' e aguarde o processo terminar. A nova pasta será aberta automaticamente no final."
+            )
+            sg.popup_ok(help_text, title="Ajuda - Criador de Revisões")
+
         if event == "-AUX_CHECK-":
             is_checked = values["-AUX_CHECK-"]
             window["-AUX_FILES-"].update(disabled=not is_checked)
@@ -273,6 +312,7 @@ def create_gui_revisao():
             window["-AUX_CHECK-"].update(False)
             window["-AUX_FILES-"].update("", disabled=True)
             window["-AUX_BROWSE-"].update(disabled=True)
+            window["-COPY_DRAWINGS-"].update(True)
         if event == "-RUN-":
             dir_path = values["-DIR-"]
             if not os.path.isdir(dir_path):
@@ -283,7 +323,7 @@ def create_gui_revisao():
             window["-PROGRESS-"].update(0)
             threading.Thread(
                 target=revisao_worker_thread,
-                args=(window, values["-DIR-"], values["-AUX_FILES-"]),
+                args=(window, values["-DIR-"], values["-AUX_FILES-"], values["-COPY_DRAWINGS-"]),
                 daemon=True
             ).start()
         if event == '-THREAD_UPDATE-':
@@ -292,6 +332,11 @@ def create_gui_revisao():
                 window['-PROGRESS-'].update(values[event]['progress'])
         if event == '-THREAD_DONE-':
             sg.popup_ok("Processo Concluído!", "A nova estrutura de revisão foi criada com sucesso.")
+            try:
+                folder_path = values[event]
+                os.startfile(folder_path)
+            except Exception as e:
+                sg.popup_error(f"Não foi possível abrir a pasta automaticamente:\n{e}")
         if event == '-THREAD_ERROR-':
             error_message = values[event]
             sg.cprint(f"ERRO: {error_message}", colors='white on red')
@@ -301,31 +346,67 @@ def create_gui_revisao():
     window.close()
 
 
-# --- CRIAÇÃO DE PDF FINAL ---
+# --- PARTE 2: CRIAÇÃO DE PDF FINAL ---
 
 def convert_word_to_pdf(input_word_path, status_callback):
     word_app = None
-    output_pdf_path = os.path.splitext(input_word_path)[0] + "_convertido.pdf"
+    doc = None 
+    
+    wdDoNotSaveChanges = 0
+    
+    input_word_path_abs = normalizar_caminho(input_word_path)
+    output_pdf_path = os.path.splitext(input_word_path_abs)[0] + "_convertido.pdf"
+    
     try:
-        status_callback(f"Iniciando conversão de: {os.path.basename(input_word_path)}...")
+        status_callback(f"Iniciando conversão de: {os.path.basename(input_word_path_abs)}...")
+        
         word_app = win32com.client.Dispatch("Word.Application")
+        
         word_app.Visible = False
-        doc = word_app.Documents.Open(os.path.abspath(input_word_path), ReadOnly=False)
+        word_app.DisplayAlerts = False
+        
+        status_callback("Abrindo documento (em segundo plano)...")
+        
+        doc = word_app.Documents.Open(
+            input_word_path_abs, 
+            ReadOnly=False,
+            ConfirmConversions=False
+        )
+        
+        if doc is None:
+            raise Exception("Falha ao abrir o documento. Verifique se o arquivo não está corrompido.")
+            
         doc.Activate()
-        doc.SaveAs(os.path.abspath(output_pdf_path), FileFormat=17) # 17 = PDF format
-        doc.Close(False)
+        
+        status_callback("Salvando como PDF...")
+        doc.SaveAs(output_pdf_path, FileFormat=17)
+        
+        doc.Close(wdDoNotSaveChanges) 
+        doc = None 
+        
         status_callback(f"Conversão concluída: {os.path.basename(output_pdf_path)}")
-        return os.path.abspath(output_pdf_path)
+        
+        word_app.Quit()
+        word_app = None
+        
+        return output_pdf_path
+    
     except Exception as e:
-        raise Exception(f"Erro durante a conversão do Word: {e}")
-    finally:
+        if doc:
+            doc.Close(wdDoNotSaveChanges)
         if word_app:
             word_app.Quit()
+        raise Exception(f"Erro durante a conversão do Word: {e}")
+    
+    finally:
+        doc = None
+        word_app = None
 
 def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_path, status_callback):
     try:
-        reader_modify = PdfReader(pdf_modify)
-        reader_insert = PdfReader(pdf_insert)
+        reader_modify = PdfReader(normalizar_caminho(pdf_modify))
+        reader_insert = PdfReader(normalizar_caminho(pdf_insert))
+        
         num_pages_total_modify = len(reader_modify.pages)
         num_pages_to_insert = len(reader_insert.pages)
         status_callback("-" * 40)
@@ -337,8 +418,10 @@ def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_pat
                 f"Erro de lógica: A substituição de {num_pages_to_insert} páginas a partir da página {start_page_replace} "
                 f"excede o total de {num_pages_total_modify} páginas do documento."
             )
+        
         start_index = start_page_replace
         end_index = start_index + num_pages_to_insert
+        
         status_callback(f"OK. Substituindo {num_pages_to_insert} páginas, começando na página {start_page_replace}.")
         writer = PdfWriter()
         for i in range(start_index):
@@ -348,7 +431,8 @@ def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_pat
         for i in range(end_index, num_pages_total_modify):
             writer.add_page(reader_modify.pages[i])
         status_callback("Bloco de páginas substituído com sucesso.")
-        with open(final_output_path, "wb") as f:
+        
+        with open(normalizar_caminho(final_output_path), "wb") as f:
             writer.write(f)
         status_callback("-" * 40)
         status_callback(f"PROCESSO CONCLUÍDO!")
@@ -357,7 +441,7 @@ def manipulate_pdfs(pdf_modify, pdf_insert, start_page_replace, final_output_pat
         raise Exception(f"Erro during PDF manipulation: {e}")
     finally:
         try:
-            os.remove(pdf_modify)
+            os.remove(normalizar_caminho(pdf_modify))
             status_callback(f"Arquivo intermediário '{os.path.basename(pdf_modify)}' removido.")
         except OSError as e:
             status_callback(f"Aviso: Não foi possível remover o arquivo intermediário: {e}")
@@ -383,52 +467,122 @@ def create_gui_pdf():
         [sg.Text("2. PDF com Desenhos para Inserir (.pdf)")],
         [sg.Input(key="-PDF-", readonly=True, enable_events=True), sg.FileBrowse("Procurar", file_types=(("PDF Files", "*.pdf"),))],
         [sg.Text("", size=(40,1), key="-PDF_INFO-", font=("Helvetica", 9))],
-        [sg.Text("3. Iniciar Substituição na Página:")],
+        [sg.Text("3. Iniciar Substituição a partir de qual Página?")],
         [sg.Input("1", key="-START_PAGE-", size=(10, 1), enable_events=True)],
-        [sg.Text("4. Salvar Arquivo Final Como...")],
-        [sg.Input(key="-OUTPUT-", readonly=True, enable_events=True), sg.FileSaveAs("Salvar como...", file_types=(("PDF Files", "*.pdf"),))],
+        [sg.HSeparator()],
+        
+        [sg.Checkbox("Salvar em local específico?", key="-CUSTOM_OUTPUT_CHECK-", default=False, enable_events=True)],
+        [
+            sg.Text("4. Salvar Arquivo Final Como:"),
+            sg.Input(key="-OUTPUT-", readonly=True, enable_events=True, disabled=True), 
+            sg.FileSaveAs("Salvar como...", file_types=(("PDF Files", "*.pdf"),), disabled=True, key="-OUTPUT_BROWSE-")
+        ]
     ]
     status_column = [
         [sg.Text("Status do Processo")],
         [sg.Multiline(size=(50, 15), key="-STATUS-", autoscroll=True, disabled=True, reroute_cprint=True)],
         [sg.ProgressBar(100, orientation='h', size=(35, 20), key='-PROGRESS-')],
-        [sg.Button("Executar", key="-RUN-"),
+        [sg.Button("Executar", key="-RUN-", disabled=True),
          sg.Button("Limpar", key="-CLEAR-"),
+         sg.Button("Ajuda", key="-AJUDA_PDF-"),
          sg.Button("Sair", key="-SAIR_PDF-", button_color=('white', 'firebrick'))]
     ]
     layout = [[sg.Column(input_column), sg.VSeperator(), sg.Column(status_column, element_justification='center')]]
 
-    window = sg.Window("PDF Automático v2.0", layout)
+    window = sg.Window("PDF Automático v2.1", layout)
 
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == "-SAIR_PDF-":
             break
-        if event in ("-DOCX-", "-PDF-", "-OUTPUT-", "-START_PAGE-"):
-            all_filled = all(values[k] for k in ["-DOCX-", "-PDF-", "-OUTPUT-", "-START_PAGE-"])
+            
+        if event == "-AJUDA_PDF-":
+            help_text = (
+                "Passo a passo para Criar PDF Final:\n\n"
+                "1. Em '1. Arquivo Word...', procure e selecione seu arquivo `.docx` principal.\n\n"
+                "2. Em '2. PDF com Desenhos...', procure e selecione o arquivo `.pdf` que você deseja inserir no Word.\n\n"
+                "3. Em '3. Iniciar Substituição...', digite o número da página do seu Word a partir de onde o PDF de desenhos deve começar. (Ex: '1' para começar na página 2).\n\n"
+                "4. (Opcional) Marque a caixa 'Salvar em local específico?' se você quiser escolher um nome e local diferentes para o arquivo final.\n\n"
+                "5. Se a caixa (Passo 4) estiver DESMARCADA, o PDF final será salvo automaticamente na mesma pasta e com o mesmo nome do seu arquivo Word.\n\n"
+                "6. Se a caixa (Passo 4) estiver MARCADA, clique em 'Salvar como...' e defina o nome e o local do PDF final.\n\n"
+                "7. O botão 'Executar' será habilitado quando todos os campos obrigatórios estiverem preenchidos. Clique nele para iniciar."
+            )
+            sg.popup_ok(help_text, title="Ajuda - Criador de PDF")
+            
+        if event == "-CUSTOM_OUTPUT_CHECK-":
+            is_checked = values["-CUSTOM_OUTPUT_CHECK-"]
+            window["-OUTPUT-"].update(disabled=not is_checked)
+            window["-OUTPUT_BROWSE-"].update(disabled=not is_checked)
+            if not is_checked:
+                window["-OUTPUT-"].update("")
+
+        if event in ("-DOCX-", "-PDF-", "-OUTPUT-", "-START_PAGE-", "-CUSTOM_OUTPUT_CHECK-"):
+            docx_filled = bool(values["-DOCX-"])
+            pdf_filled = bool(values["-PDF-"])
             page_valid = values["-START_PAGE-"].isdigit() and int(values["-START_PAGE-"]) > 0
-            window["-RUN-"].update(disabled=not (all_filled and page_valid))
+            
+            custom_output = values["-CUSTOM_OUTPUT_CHECK-"]
+            output_filled = bool(values["-OUTPUT-"])
+            
+            run_enabled = False
+            if docx_filled and pdf_filled and page_valid:
+                if not custom_output:
+                    run_enabled = True
+                elif custom_output and output_filled:
+                    run_enabled = True
+            
+            window["-RUN-"].update(disabled=not run_enabled)
+
         if event == "-PDF-" and values["-PDF-"]:
             try:
                 page_count = len(PdfReader(values["-PDF-"]).pages)
                 window["-PDF_INFO-"].update(f"-> PDF de {page_count} páginas selecionado.", text_color="cyan")
             except Exception:
                 window["-PDF_INFO-"].update("-> Arquivo PDF inválido ou corrompido.", text_color="red")
+        
         if event == "-CLEAR-":
             for key in ["-DOCX-", "-PDF-", "-OUTPUT-", "-START_PAGE-", "-PDF_INFO-", "-STATUS-"]:
                 window[key].update("")
             window["-START_PAGE-"].update("1")
             window["-PROGRESS-"].update(0)
             window["-RUN-"].update(disabled=True)
+            window["-CUSTOM_OUTPUT_CHECK-"].update(False)
+            window["-OUTPUT-"].update("", disabled=True)
+            window["-OUTPUT_BROWSE-"].update(disabled=True)
+
         if event == "-RUN-":
             window["-RUN-"].update(disabled=True)
             window["-STATUS-"].update("")
             window["-PROGRESS-"].update(0)
+            
+            try:
+                start_page_num = int(values["-START_PAGE-"])
+                if start_page_num <= 0:
+                    raise ValueError("A página deve ser maior que 0")
+            except ValueError:
+                sg.popup_error("Número da Página Inválido. Deve ser um número inteiro maior que 0.")
+                window["-RUN-"].update(disabled=False)
+                continue
+
+            final_output_path = ""
+            if values["-CUSTOM_OUTPUT_CHECK-"]:
+                final_output_path = values["-OUTPUT-"]
+            else:
+                docx_path = values["-DOCX-"]
+                base_name = os.path.splitext(os.path.abspath(docx_path))[0]
+                final_output_path = base_name + ".pdf"
+            
+            if not final_output_path:
+                sg.popup_error("Erro: Caminho de saída não pôde ser determinado.")
+                window["-RUN-"].update(disabled=False)
+                continue
+
             threading.Thread(
                 target=pdf_worker_thread,
-                args=(window, values["-DOCX-"], values["-PDF-"], int(values["-START_PAGE-"]), values["-OUTPUT-"]),
+                args=(window, values["-DOCX-"], values["-PDF-"], start_page_num, final_output_path),
                 daemon=True
             ).start()
+            
         if event == '-THREAD_UPDATE-':
             sg.cprint(values[event]['message'])
             if values[event]['progress'] is not None:
@@ -443,7 +597,7 @@ def create_gui_pdf():
     window.close()
 
 
-# ---MENU PRINCIPAL---
+# --- PARTE 3: MENU PRINCIPAL ---
 
 def create_main_menu():
     sg.theme('GrayGrayGray')
@@ -457,7 +611,7 @@ def create_main_menu():
         [sg.Text("Fernando Carmo & Lucas Coelho\n       OperationsLTC@2025",font=("Helvetica", 7))]
         ]
     
-    window = sg.Window("RevMaker Version 1.2 ", layout, element_justification='c')
+    window = sg.Window("RevMaker Version 1.3 ", layout, element_justification='c')
     
     while True:
         event, values = window.read()
