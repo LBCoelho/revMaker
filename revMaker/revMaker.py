@@ -11,7 +11,7 @@ version = "v1.3"
 
 required_packages = {
     'pywin32': 'win32com',
-    'PyPDF2': 'PyPDF2',
+    'pypdf': 'pypdf',
     'FreeSimpleGUI': 'FreeSimpleGUI'
 }
 
@@ -64,7 +64,7 @@ import shutil
 from pathlib import Path
 import FreeSimpleGUI as sg
 import win32com.client
-from PyPDF2 import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter
 
 # --- PARTE 1: CRIAR NOVA PASTA DE REVISÃO ---
 
@@ -491,7 +491,7 @@ def create_gui_pdf():
     ]
     layout = [[sg.Column(input_column), sg.VSeperator(), sg.Column(status_column, element_justification='center')]]
 
-    window = sg.Window("PDF Automático v2.1", layout)
+    window = sg.Window("PDF Automático v2.2", layout)
 
     while True:
         event, values = window.read()
