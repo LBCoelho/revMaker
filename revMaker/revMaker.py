@@ -611,7 +611,7 @@ if __name__ == "__main__":
         print(f"Você está usando a última versão ({ultima})!")
     else:
         print(f"Existe uma versão mais recente disponível: {ultima}")
-        print("Baixe aqui:", f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.exe")
+        print("Baixe aqui:", f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.zip")
     versao_atual = version  # Ajuste para a versão do seu programa
     atual, ultima = verificar_ultima_versao(versao_atual)
     if atual:
@@ -619,7 +619,7 @@ if __name__ == "__main__":
     else:
         resposta = sg.popup_yes_no(f"Existe uma versão mais recente disponível: {ultima}. Deseja baixar?", title="Aviso")
         if resposta == "Yes":
-            webbrowser.open(f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.exe")
+            webbrowser.open(f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.zip")
 
     create_main_menu()
     
