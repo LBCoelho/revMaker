@@ -7,7 +7,7 @@ import unicodedata
 import webbrowser
 
 print("Iniciando... Verificando dependências necessárias.")
-version = "1.4"
+version = "1.4.1"
 required_packages = {
     'pywin32': 'win32com',
     'pypdf': 'pypdf',
@@ -260,7 +260,7 @@ def create_gui_revisao():
          sg.Button("Sair", key="-SAIR_REVISAO-", button_color=('white', 'firebrick'))],
     ]
     layout = [[sg.Column(input_column), sg.VSeperator(), sg.Column(status_column)]]
-    window = sg.Window("Criador de Novas Revisões v1.4", layout)
+    window = sg.Window(f"Criador de Novas Revisões v{version}", layout)
 
     while True:
         event, values = window.read()
@@ -585,7 +585,7 @@ def create_main_menu():
 
 
     ]
-    window = sg.Window("RevMaker Version 1.4 ", layout, element_justification='c')
+    window = sg.Window(f"RevMaker Version {version} ", layout, element_justification='c')
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == "Sair":
