@@ -16,12 +16,9 @@ required_packages = {
 }
 
 def verificar_ultima_versao(versao_atual):
-    """
-    Verifica se a versão atual é a última release do repositório GitHub.
-    
-    :param versao_atual: Versão atual do programa (ex: 'v1.0.0')
-    :return: (bool, str) -> True se for a última versão, False caso contrário, e a última versão encontrada
-    """
+  
+    #Verifica se a versão atual é a última release do repositório GitHub.
+  
     url = "https://api.github.com/repos/LBCoelho/revMaker/releases/latest"
     resposta = requests.get(url)
     
