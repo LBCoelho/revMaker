@@ -7,12 +7,30 @@ import unicodedata
 import webbrowser
 
 print("Iniciando... Verificando dependências necessárias.")
-version = "v1.4"
+version = "1.4"
 required_packages = {
     'pywin32': 'win32com',
     'pypdf': 'pypdf',
-    'FreeSimpleGUI': 'FreeSimpleGUI'
+    'FreeSimpleGUI': 'FreeSimpleGUI',
+    'requests' : 'requests'
 }
+
+def verificar_ultima_versao(versao_atual):
+    """
+    Verifica se a versão atual é a última release do repositório GitHub.
+    
+    :param versao_atual: Versão atual do programa (ex: 'v1.0.0')
+    :return: (bool, str) -> True se for a última versão, False caso contrário, e a última versão encontrada
+    """
+    url = "https://api.github.com/repos/LBCoelho/revMaker/releases/latest"
+    resposta = requests.get(url)
+    
+    if resposta.status_code == 200:
+        dados = resposta.json()
+        ultima_release = dados.get("tag_name")
+        return versao_atual == ultima_release, ultima_release
+    else:
+        raise Exception(f"Erro ao acessar API do GitHub: {resposta.status_code}")
 
 def check_and_install():
     pacotes_instalados = 0
@@ -49,13 +67,14 @@ def normalizar_caminho(caminho):
         caminho_normalizado = r'\\?\{}'.format(caminho_normalizado)
     return caminho_normalizado
 
-#check_and_install()
+check_and_install()
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
 
 import threading
 import re
 import shutil
+import requests
 from pathlib import Path
 import FreeSimpleGUI as sg
 import win32com.client
@@ -566,6 +585,8 @@ def create_main_menu():
         [sg.Button("Criação de PDF final (PP + Desenho)", key="-PDF-", size=(40, 2),mouseover_colors=("grey"),tooltip="Ferramenta para unificar .docx com os desenhos, gerando o PDF final.")],
         [sg.Button("GitHub", key = "-GIT-", size=(5, 1), button_color=('white', 'purple'))],
         [sg.Text("Fernando Carmo & Lucas Coelho\n       OperationsLTC@2025",font=("Helvetica", 7))]
+
+
     ]
     window = sg.Window("RevMaker Version 1.4 ", layout, element_justification='c')
     while True:
@@ -581,9 +602,27 @@ def create_main_menu():
             create_gui_pdf()
             window.un_hide()
         if event == "-GIT-":
-            webbrowser.open("https://github.com/LBCoelho/revMaker")
+            webbrowser.open(f"https://github.com/LBCoelho/revMaker")
     window.close()
 
 # --- ENTRADA ---
 if __name__ == "__main__":
+    versao_atual = version  # Ajuste para a versão do seu programa
+    atual, ultima = verificar_ultima_versao(versao_atual)
+
+    if atual:
+        print(f"Você está usando a última versão ({ultima})!")
+    else:
+        print(f"Existe uma versão mais recente disponível: {ultima}")
+        print("Baixe aqui:", f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.exe")
+    versao_atual = version  # Ajuste para a versão do seu programa
+    atual, ultima = verificar_ultima_versao(versao_atual)
+    if atual:
+        print("Atual")
+    else:
+        resposta = sg.popup_yes_no(f"Existe uma versão mais recente disponível: {ultima}. Deseja baixar?", title="Aviso")
+        if resposta == "Yes":
+            webbrowser.open(f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.exe")
+
     create_main_menu()
+    
