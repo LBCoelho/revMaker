@@ -221,6 +221,7 @@ def processar_revisao(diretorio_base_str, aux_files_list, copy_drawings_flag, st
         status_callback(f"Aviso: Nenhum arquivo .docx encontrado para copiar para a raiz da nova revisão.")
 
     status_callback("\nProcesso de Criação da Nova Revisão CONCLUÍDO!", 100)
+    os.startfile(pasta_rev_proxima)
     return str(pasta_rev_proxima).replace(r'\\?\\', '')
 
 def revisao_worker_thread(window, diretorio_base_str, aux_files_str, copy_drawings_flag, continuar_sem_pdf=False):
@@ -585,7 +586,10 @@ def create_main_menu():
 
 
     ]
-    window = sg.Window(f"RevMaker Version {version} ", layout, element_justification='c')
+    if (version<ultima):
+        window = sg.Window(f"RevMaker Version {version} ", layout, element_justification='c')
+    else:
+        window = sg.Window(f"RevMaker Version (Unreleased)", layout, element_justification='c')
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == "Sair":
@@ -607,19 +611,23 @@ if __name__ == "__main__":
     versao_atual = version  # Ajuste para a versão do seu programa
     atual, ultima = verificar_ultima_versao(versao_atual)
 
-    if atual:
-        print(f"Você está usando a última versão ({ultima})!")
-    else:
-        print(f"Existe uma versão mais recente disponível: {ultima}")
-        print("Baixe aqui:", f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.zip")
+    if (version<ultima):
+        if atual:
+            print(f"Você está usando a última versão ({ultima})!")
+        else:
+            print(f"Existe uma versão mais recente disponível: {ultima}")
+            print("Baixe aqui:", f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.zip")
+    else: 
+        print("Versão de testes (Não publicada)")
     versao_atual = version  # Ajuste para a versão do seu programa
     atual, ultima = verificar_ultima_versao(versao_atual)
-    if atual:
-        print("Atual")
-    else:
-        resposta = sg.popup_yes_no(f"Existe uma versão mais recente disponível: {ultima}. Deseja baixar?", title="Aviso")
-        if resposta == "Yes":
-            webbrowser.open(f"https://github.com/LBCoelho/revMaker/releases/download/{ultima}/revMaker.zip")
+    if (version<ultima):
+        if atual:
+            print("Atual")
+        else:
+            resposta = sg.popup_yes_no(f"Existe uma versão mais recente disponível: {ultima}. Deseja baixar?", title="Aviso")
+            if resposta == "Yes":
+                webbrowser.open(f"https://digicorner.sharepoint.com/sites/SubseaEngineering/_layouts/15/download.aspx?SourceUrl=%2Fsites%2FSubseaEngineering%2FNuvem%2020%2F08%2DOPR%2F04%2DProjetos%2FRevMaker%2FrevMaker%2Eexe")
 
     create_main_menu()
     
