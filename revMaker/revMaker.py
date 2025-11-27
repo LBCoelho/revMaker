@@ -64,7 +64,7 @@ def normalizar_caminho(caminho):
         caminho_normalizado = r'\\?\{}'.format(caminho_normalizado)
     return caminho_normalizado
 
-check_and_install()
+#check_and_install()
 print("Todas as dependências estão prontas. Iniciando o aplicativo...")
 print("-" * 50)
 
@@ -586,7 +586,7 @@ def create_main_menu():
 
 
     ]
-    if (version<ultima):
+    if (version<=ultima):
         window = sg.Window(f"RevMaker Version {version} ", layout, element_justification='c')
     else:
         window = sg.Window(f"RevMaker Version (Unreleased)", layout, element_justification='c')
@@ -610,8 +610,11 @@ def create_main_menu():
 if __name__ == "__main__":
     versao_atual = version  # Ajuste para a versão do seu programa
     atual, ultima = verificar_ultima_versao(versao_atual)
+    print(atual)
+    print(ultima)
+    print(verificar_ultima_versao(versao_atual))
 
-    if (version<ultima):
+    if (version<=ultima):
         if atual:
             print(f"Você está usando a última versão ({ultima})!")
         else:
@@ -621,7 +624,7 @@ if __name__ == "__main__":
         print("Versão de testes (Não publicada)")
     versao_atual = version  # Ajuste para a versão do seu programa
     atual, ultima = verificar_ultima_versao(versao_atual)
-    if (version<ultima):
+    if (version<=ultima):
         if atual:
             print("Atual")
         else:
