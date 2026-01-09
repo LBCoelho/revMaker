@@ -179,7 +179,7 @@ def processar_revisao(diretorio_base_str, aux_files_list, copy_drawings_flag, st
             for item in src_desenhos.iterdir():
                 if item.is_file():
                     try:
-                        shutil.copy2(item, dst_desenhos_old)
+                        shutil.copy2(item, dst_desenhos)
                         files_copied_count += 1
                     except Exception as e:
                         status_callback(f"Aviso: Falha ao copiar desenho '{item.name}'. Erro: {e}")
@@ -246,7 +246,7 @@ def create_gui_revisao():
         [sg.Text(" (A pasta que contém as 'Rev.1', 'Rev.2', etc.)", font=("Helvetica", 9))],
         [sg.Text("")],
         [sg.HSeparator()],
-        [sg.Checkbox("Copiar desenhos da revisão anterior? (Move para pasta OLD)", key="-COPY_DRAWINGS-", default=True)],
+        [sg.Checkbox("Copiar desenhos da revisão anterior?", key="-COPY_DRAWINGS-", default=True)],
         [sg.Text("")],
         [sg.Checkbox("Anexar documentos auxiliares na pasta 01-Auxiliares? (VCPs, Referencias etc.)", key="-AUX_CHECK-", enable_events=True)],
         [sg.Input(key="-AUX_FILES-", readonly=True, disabled=True), sg.FilesBrowse("Procurar", key="-AUX_BROWSE-", disabled=True)]
@@ -313,7 +313,7 @@ def create_gui_revisao():
                 window['-PROGRESS-'].update(values[event]['progress'])
 
         if event == '-THREAD_CONFIRM-':
-            resposta = sg.popup_yes_no("PDF da revisão anterior não foi encontrado, deseja continuar?", title="Aviso")
+            resposta = sg.popup_yes_no(f"PDF da revisão anterior não foi encontrado, deseja continuar? (Em caso de revisão de documento que não gere PDF (Ex: Checklist) ignore o aviso e clique sim)", title="Aviso")
             if resposta == "Yes":
                 threading.Thread(
                     target=revisao_worker_thread,
@@ -439,7 +439,7 @@ def create_gui_pdf():
         [sg.Input(key="-PDF-", readonly=True, enable_events=True), sg.FileBrowse("Procurar", file_types=(("PDF Files", "*.pdf"),), key="-PDF_BROWSE-")],
         [sg.Text("", size=(40,1), key="-PDF_INFO-", font=("Helvetica", 9))],
         [sg.Text("3. Iniciar Substituição a partir de qual Página?")],
-        [sg.Input("1", key="-START_PAGE-", size=(10, 1), enable_events=True)],
+        [sg.Input("2", key="-START_PAGE-", size=(10, 1), enable_events=True)],
         [sg.HSeparator()],
         [sg.Checkbox("Salvar em local específico?", key="-CUSTOM_OUTPUT_CHECK-", default=False, enable_events=True)],
         [
@@ -506,7 +506,7 @@ def create_gui_pdf():
         if event == "-CLEAR-":
             for key in ["-DOCX-", "-PDF-", "-OUTPUT-", "-START_PAGE-", "-PDF_INFO-", "-STATUS-"]:
                 window[key].update("")
-            window["-START_PAGE-"].update("1")
+            window["-START_PAGE-"].update("2")
             window["-PROGRESS-"].update(0)
             window["-RUN-"].update(disabled=True)
             window["-CUSTOM_OUTPUT_CHECK-"].update(False)
