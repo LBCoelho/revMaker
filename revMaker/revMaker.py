@@ -7,7 +7,7 @@ import unicodedata
 import webbrowser
 
 print("Iniciando... Verificando dependências necessárias.")
-version = "1.4.1"
+version = "1.4.2"
 required_packages = {
     'pywin32': 'win32com',
     'pypdf': 'pypdf',
